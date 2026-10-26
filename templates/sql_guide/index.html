@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}DBMS Viva & SQL Concepts Guide - Power Grid Utility{% endblock %}
+{% block page_title %}DBMS Concepts & Academic Viva Demonstration{% endblock %}
+
+{% block extra_head %}
+<!-- Mermaid.js CDN for live ER Diagram rendering -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral' });
+</script>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+  <h2 style="font-size: 20px; font-weight: 800;">DBMS Mini Project Knowledge Base & Viva Guide</h2>
+  <p style="font-size: 13.5px; color: var(--text-muted);">
+    Comprehensive guide explaining the relational database architecture, normal forms, constraints, joins, triggers, ACID compliance, and live SQL execution for examiner demonstration.
+  </p>
+</div>
+
+<!-- Section 1: Entity-Relationship Diagram (ERD) -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-project-diagram" style="color: var(--brand-blue);"></i> 1. Entity-Relationship (ER) Architecture</h3>
+  </div>
+  <div class="card-body">
+    <div class="mermaid" style="background: #ffffff; padding: 16px; border-radius: var(--radius-sm); overflow-x: auto;">
+erDiagram
+    USERS {
+        int user_id PK
+        varchar username UK
+        varchar role
+        varchar email UK
+    }
+    CONSUMERS ||--o{ METER_READINGS : has
+    CONSUMERS ||--o{ BILLS : receives
+    TARIFFS ||--|{ TARIFF_SLABS : contains
+    METER_READINGS ||--|| BILLS : generates
+    BILLS ||--|{ BILL_ITEMS : details
+    BILLS ||--o{ PAYMENTS : settles
+    PAYMENTS ||--o{ PAYMENT_REVERSALS : audited_by
+
+    CONSUMERS {
+        int consumer_id PK
+        varchar consumer_number UK
+        varchar full_name
+        varchar meter_number UK
+        varchar connection_type
+        varchar account_status
+    }
+    TARIFFS {
+        int tariff_id PK
+        varchar tariff_name
+        varchar connection_type
+        numeric fixed_charge
+    }
+    TARIFF_SLABS {
+        int slab_id PK
+        int tariff_id FK
+        int slab_number
+        numeric min_units
+        numeric max_units
+        numeric rate_per_unit
+    }
+    METER_READINGS {
+        int reading_id PK
+        int consumer_id FK
+        varchar reading_month
+        numeric previous_reading
+        numeric current_reading
+        numeric units_consumed
+        boolean is_billed
+    }
+    BILLS {
+        int bill_id PK
+        varchar bill_number UK
+        int consumer_id FK
+        int meter_reading_id FK
+        numeric units_consumed
+        numeric energy_charge
+        numeric fixed_charge
+        numeric total_amount
+        numeric amount_paid
+        numeric outstanding_amount
+        varchar payment_status
+    }
+    BILL_ITEMS {
+        int item_id PK
+        int bill_id FK
+        varchar item_type
+        varchar description
+        numeric amount
+    }
+    PAYMENTS {
+        int payment_id PK
+        int bill_id FK
+        varchar payment_reference UK
+        numeric amount_paid
+        varchar payment_method
+        varchar payment_status
+    }
+    PAYMENT_REVERSALS {
+        int reversal_id PK
+        int payment_id FK
+        int bill_id FK
+        numeric reversed_amount
+        text reversal_reason
+    }
+    </div>
+  </div>
+</div>
+
+<!-- Section 2: Database Normalization Walkthrough (1NF -> 3NF) -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-layer-group" style="color: var(--electric-green);"></i> 2. Database Normalization Analysis</h3>
+  </div>
+  <div class="card-body" style="font-size: 13.5px; line-height: 1.6;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+      <div style="background-color: #f8fafc; padding: 16px; border-radius: var(--radius-sm); border-left: 3px solid var(--brand-blue);">
+        <h4 style="font-size: 14px; font-weight: 700; color: var(--brand-blue); margin-bottom: 6px;">First Normal Form (1NF)</h4>
+        <p>• <strong>Atomicity:</strong> Every column contains atomic (indivisible) values. Customer address, name, phone, and meter numbers are individual fields, not multi-valued lists.</p>
+        <p>• <strong>Unique Rows:</strong> Every record is identified by a unique primary key column.</p>
+      </div>
+
+      <div style="background-color: #f8fafc; padding: 16px; border-radius: var(--radius-sm); border-left: 3px solid var(--electric-green);">
+        <h4 style="font-size: 14px; font-weight: 700; color: var(--electric-green); margin-bottom: 6px;">Second Normal Form (2NF)</h4>
+        <p>• <strong>No Partial Dependencies:</strong> Meets 1NF, and all non-key attributes are fully dependent on the entire primary key.</p>
+        <p>• Tables utilize surrogate single-column primary keys (e.g. <code>consumer_id</code>, <code>reading_id</code>), naturally eliminating composite key partial dependencies.</p>
+      </div>
+
+      <div style="background-color: #f8fafc; padding: 16px; border-radius: var(--radius-sm); border-left: 3px solid #7e22ce;">
+        <h4 style="font-size: 14px; font-weight: 700; color: #7e22ce; margin-bottom: 6px;">Third Normal Form (3NF)</h4>
+        <p>• <strong>No Transitive Dependencies:</strong> Non-key attributes depend only on the primary key, not on other non-key attributes.</p>
+        <p>• Slabs belong strictly to <code>tariffs</code>; tariff rates are not stored redundantly in the consumer table.</p>
+        <p>• <strong>Intentional Snapshot in Bills:</strong> Line-item charges are stored in <code>bill_items</code> so that future tariff changes do not rewrite historical financial records.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 3: ACID Transactions & Concurrency Safety -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-shield-halved" style="color: #ef4444;"></i> 3. ACID Properties Implementation</h3>
+  </div>
+  <div class="card-body" style="font-size: 13.5px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;">
+      <div>
+        <strong>Atomicity (A):</strong>
+        <p style="color: var(--text-muted); font-size: 12.5px;">Bill generation inserts into <code>bills</code> and <code>bill_items</code> and updates <code>meter_readings</code> inside a single database transaction. If any insert fails, all changes are rolled back.</p>
+      </div>
+      <div>
+        <strong>Consistency (C):</strong>
+        <p style="color: var(--text-muted); font-size: 12.5px;">CHECK constraints guarantee readings cannot be negative, current reading &ge; previous reading, and bill outstanding amount equals total minus amount paid.</p>
+      </div>
+      <div>
+        <strong>Isolation (I):</strong>
+        <p style="color: var(--text-muted); font-size: 12.5px;">Payments utilize <code>SELECT ... FOR UPDATE</code> (Pessimistic Locking) to lock bill rows, preventing concurrent overpayments and lost updates.</p>
+      </div>
+      <div>
+        <strong>Durability (D):</strong>
+        <p style="color: var(--text-muted); font-size: 12.5px;">PostgreSQL Write-Ahead Logging (WAL) guarantees that all committed transactions survive system crashes or power failures.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 4: Interactive Live SQL Runner for Viva Demo -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-terminal" style="color: var(--brand-blue);"></i> 4. Live SQL Query Demonstrator (Click to Execute)</h3>
+  </div>
+  <div class="card-body">
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+      Select any mandatory DBMS syllabus concept below to view its SQL query syntax and execute it live against the PostgreSQL database engine:
+    </p>
+
+    <!-- Query Selector Buttons -->
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+      {% for q in demo_queries %}
+      <button type="button" class="btn btn-outline btn-sm query-select-btn" data-query-id="{{ q.id }}">
+        {{ q.title }}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- SQL Code Preview Box -->
+    <div style="margin-bottom: 16px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+        <label style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);" id="activeQueryLabel">Select a query above</label>
+        <span id="activeConceptLabel" style="font-size: 12px; color: var(--brand-blue); font-weight: 600;"></span>
+      </div>
+      <pre id="sqlCodeViewer" style="background-color: #0f172a; color: #38bdf8; padding: 16px; border-radius: var(--radius-sm); font-family: 'Consolas', monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; min-height: 80px;">-- Click any of the numbered concept queries above to load and run it.</pre>
+    </div>
+
+    <!-- Query Results Table Area -->
+    <div id="queryResultWrapper" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <h4 style="font-size: 13px; font-weight: 700; color: var(--text-main);">
+          Query Execution Output (<span id="resultCountSpan">0</span> rows returned)
+        </h4>
+        <span style="font-size: 11px; color: var(--electric-green); font-weight: 700;">
+          <i class="fa-solid fa-check"></i> Executed Successfully via psycopg2
+        </span>
+      </div>
+
+      <div class="table-responsive" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-sm);">
+        <table class="table" style="font-size: 12.5px;">
+          <thead id="resultHead"></thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const queryBtns = document.querySelectorAll('.query-select-btn');
+  const codeViewer = document.getElementById('sqlCodeViewer');
+  const queryLabel = document.getElementById('activeQueryLabel');
+  const conceptLabel = document.getElementById('activeConceptLabel');
+  const resultWrapper = document.getElementById('queryResultWrapper');
+  const resultHead = document.getElementById('resultHead');
+  const resultBody = document.getElementById('resultBody');
+  const resultCount = document.getElementById('resultCountSpan');
+
+  queryBtns.forEach(btn => {
+    btn.addEventListener('click', async () => {
+      queryBtns.forEach(b => b.classList.remove('btn-primary'));
+      btn.classList.add('btn-primary');
+
+      const queryId = btn.getAttribute('data-query-id');
+      codeViewer.textContent = 'Executing query against PostgreSQL...';
+
+      try {
+        const res = await fetch('/sql-guide/api/run-query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query_id: queryId })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          codeViewer.textContent = `Error: ${data.error}`;
+          resultWrapper.style.display = 'none';
+          return;
+        }
+
+        queryLabel.textContent = data.title;
+        codeViewer.textContent = data.sql;
+
+        // Render columns
+        resultHead.innerHTML = '<tr>' + data.columns.map(c => `<th>${c}</th>`).join('') + '</tr>';
+
+        // Render rows
+        resultBody.innerHTML = '';
+        data.rows.forEach(r => {
+          const rowHtml = '<tr>' + data.columns.map(c => `<td>${r[c]}</td>`).join('') + '</tr>';
+          resultBody.insertAdjacentHTML('beforeend', rowHtml);
+        });
+
+        resultCount.textContent = data.row_count;
+        resultWrapper.style.display = 'block';
+
+      } catch (err) {
+        codeViewer.textContent = `Execution failed: ${err.message}`;
+      }
+    });
+  });
+
+  // Automatically trigger the first query on page load
+  if (queryBtns.length > 0) {
+    queryBtns[0].click();
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Meter Readings - Power Grid Utility{% endblock %}
+{% block page_title %}Monthly Meter Readings{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <div>
+    <h2 style="font-size: 18px; font-weight: 700;">Recorded Meter Readings</h2>
+    <p style="font-size: 13px; color: var(--text-muted);">Inspect monthly kilowatt-hour consumption measurements</p>
+  </div>
+  <a href="{{ url_for('readings.add') }}" class="btn btn-primary">
+    <i class="fa-solid fa-plus"></i> Record Meter Reading
+  </a>
+</div>
+
+<!-- Filter Bar -->
+<form method="GET" action="{{ url_for('readings.index') }}" class="filter-bar">
+  <div class="search-input">
+    <input type="text" name="search" class="form-control" placeholder="Search by consumer name, ID, or meter #..." value="{{ search }}">
+  </div>
+
+  <div>
+    <select name="period" class="form-control" onchange="this.form.submit()">
+      <option value="ALL">All Billing Cycles</option>
+      {% for p in periods %}
+      <option value="{{ p }}" {% if selected_period == p %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <select name="billed" class="form-control" onchange="this.form.submit()">
+      <option value="ALL">All Statuses</option>
+      <option value="YES" {% if billed == 'YES' %}selected{% endif %}>Billed Only</option>
+      <option value="NO" {% if billed == 'NO' %}selected{% endif %}>Pending Unbilled</option>
+    </select>
+  </div>
+
+  <button type="submit" class="btn btn-outline">
+    <i class="fa-solid fa-filter"></i> Apply
+  </button>
+
+  {% if search or (selected_period and selected_period != 'ALL') or (billed and billed != 'ALL') %}
+  <a href="{{ url_for('readings.index') }}" class="btn btn-outline" style="color: #ef4444;">
+    <i class="fa-solid fa-xmark"></i> Clear
+  </a>
+  {% endif %}
+</form>
+
+<!-- Readings Table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Cycle</th>
+          <th>Consumer</th>
+          <th>Category</th>
+          <th>Meter Hardware</th>
+          <th>Previous</th>
+          <th>Current</th>
+          <th>Units Consumed</th>
+          <th>Reading Date</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in readings %}
+        <tr>
+          <td><strong>{{ r.reading_month }}</strong></td>
+          <td>
+            <a href="{{ url_for('consumers.view', consumer_id=r.consumer_id) }}" style="font-weight: 600; color: var(--brand-blue); text-decoration: none;">
+              {{ r.full_name }}
+            </a>
+            <div style="font-size: 11px; color: var(--text-muted);">{{ r.consumer_number }}</div>
+          </td>
+          <td>
+            {% if r.connection_type == 'DOMESTIC' %}
+              <span class="badge badge-domestic">Domestic</span>
+            {% elif r.connection_type == 'COMMERCIAL' %}
+              <span class="badge badge-commercial">Commercial</span>
+            {% else %}
+              <span class="badge badge-industrial">Industrial</span>
+            {% endif %}
+          </td>
+          <td><code>{{ r.meter_number }}</code></td>
+          <td>{{ r.previous_reading }}</td>
+          <td>{{ r.current_reading }}</td>
+          <td style="font-weight: 700; color: #047857;">{{ r.units_consumed }} kWh</td>
+          <td>{{ r.reading_date | date_format }}</td>
+          <td>
+            {% if r.is_billed %}
+              <span class="badge badge-paid">Billed</span>
+            {% else %}
+              <span class="badge badge-unpaid">Pending</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if r.is_billed %}
+              <a href="{{ url_for('bills.view', bill_id=r.bill_id) }}" class="btn btn-outline btn-sm">
+                <i class="fa-solid fa-file-invoice"></i> View Bill
+              </a>
+            {% else %}
+              <form method="POST" action="{{ url_for('bills.generate') }}" style="display: inline;">
+                <input type="hidden" name="action_type" value="single">
+                <input type="hidden" name="reading_id" value="{{ r.reading_id }}">
+                <button type="submit" class="btn btn-success btn-sm">
+                  <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Bill
+                </button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 36px;">
+            <i class="fa-solid fa-gauge" style="font-size: 32px; color: #cbd5e1; margin-bottom: 8px;"></i>
+            <p>No meter readings found matching filter criteria.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

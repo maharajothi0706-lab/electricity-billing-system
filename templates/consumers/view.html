@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Consumer Profile: {{ consumer.full_name }} ({{ consumer.consumer_number }}){% endblock %}
+{% block page_title %}Consumer 360° Profile{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <div style="display: flex; align-items: center; gap: 14px;">
+    <div style="width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--brand-blue); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+      <i class="fa-solid fa-user"></i>
+    </div>
+    <div>
+      <h2 style="font-size: 20px; font-weight: 700;">{{ consumer.full_name }}</h2>
+      <span style="font-size: 13px; color: var(--text-muted);">
+        Account: <strong>{{ consumer.consumer_number }}</strong> • Meter: <code>{{ consumer.meter_number }}</code>
+      </span>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <a href="{{ url_for('consumers.edit', consumer_id=consumer.consumer_id) }}" class="btn btn-outline">
+      <i class="fa-solid fa-pen-to-square"></i> Edit Profile
+    </a>
+    <a href="{{ url_for('readings.add', consumer_id=consumer.consumer_id) }}" class="btn btn-primary">
+      <i class="fa-solid fa-gauge"></i> Enter Reading
+    </a>
+
+    {% if consumer.account_status == 'ACTIVE' %}
+    <form method="POST" action="{{ url_for('consumers.deactivate', consumer_id=consumer.consumer_id) }}" style="display: inline;">
+      <button type="submit" class="btn btn-danger confirm-action" data-confirm="Deactivate consumer {{ consumer.consumer_number }}? Historical records will be preserved.">
+        <i class="fa-solid fa-ban"></i> Deactivate
+      </button>
+    </form>
+    {% else %}
+    <form method="POST" action="{{ url_for('consumers.activate', consumer_id=consumer.consumer_id) }}" style="display: inline;">
+      <button type="submit" class="btn btn-success confirm-action" data-confirm="Reactivate consumer {{ consumer.consumer_number }}?">
+        <i class="fa-solid fa-check"></i> Reactivate
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Lifetime Financial & Usage Snapshot Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Lifetime Consumption</h3>
+      <div class="stat-number">{{ summary.total_units_consumed | round(1) if summary else 0.0 }} <span style="font-size: 14px;">kWh</span></div>
+      <div class="stat-sub">Across all meter cycles</div>
+    </div>
+    <div class="stat-icon green"><i class="fa-solid fa-bolt"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Total Billed Revenue</h3>
+      <div class="stat-number">{{ summary.total_billed_amount | currency if summary else 0.0 | currency }}</div>
+      <div class="stat-sub">Lifetime invoices total</div>
+    </div>
+    <div class="stat-icon blue"><i class="fa-solid fa-file-invoice"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Payments Made</h3>
+      <div class="stat-number">{{ summary.total_paid_amount | currency if summary else 0.0 | currency }}</div>
+      <div class="stat-sub">Settled receipts</div>
+    </div>
+    <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Current Outstanding</h3>
+      <div class="stat-number" style="color: #ef4444;">{{ summary.total_outstanding_amount | currency if summary else 0.0 | currency }}</div>
+      <div class="stat-sub">{{ summary.unpaid_bills_count if summary else 0 }} pending bills</div>
+    </div>
+    <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+  </div>
+</div>
+
+<!-- Profile Details Card -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-id-card" style="color: var(--brand-blue);"></i> Service & Connection Profile</h3>
+  </div>
+  <div class="card-body">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; font-size: 13.5px;">
+      <div>
+        <span style="color: var(--text-muted); display: block; font-size: 12px;">Connection Type:</span>
+        <strong>{{ consumer.connection_type }}</strong>
+      </div>
+      <div>
+        <span style="color: var(--text-muted); display: block; font-size: 12px;">Meter Hardware ID:</span>
+        <code>{{ consumer.meter_number }}</code>
+      </div>
+      <div>
+        <span style="color: var(--text-muted); display: block; font-size: 12px;">Connection Date:</span>
+        <strong>{{ consumer.connection_date | date_format }}</strong>
+      </div>
+      <div>
+        <span style="color: var(--text-muted); display: block; font-size: 12px;">Account Status:</span>
+        {% if consumer.account_status == 'ACTIVE' %}
+          <span class="badge badge-active">ACTIVE</span>
+        {% else %}
+          <span class="badge badge-inactive">INACTIVE</span>
+        {% endif %}
+      </div>
+      <div>
+        <span style="color: var(--text-muted); display: block; font-size: 12px;">Phone Number:</span>
+        <span>{{ consumer.phone_number }}</span>
+      </div>
+      <div>
+        <span style="color: var(--text-muted); display: block; font-size: 12px;">Email Address:</span>
+        <span>{{ consumer.email }}</span>
+      </div>
+      <div style="grid-column: 1 / -1;">
+        <span style="color: var(--text-muted); display: block; font-size: 12px;">Physical Service Address:</span>
+        <span>{{ consumer.address }}, {{ consumer.city }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Invoices Ledger -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-file-invoice-dollar" style="color: var(--electric-green);"></i> Invoices & Billing History</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Bill #</th>
+          <th>Period</th>
+          <th>Units</th>
+          <th>Energy Charge</th>
+          <th>Total Amount</th>
+          <th>Paid</th>
+          <th>Outstanding</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bills %}
+        <tr>
+          <td><strong>{{ b.bill_number }}</strong></td>
+          <td>{{ b.billing_period }}</td>
+          <td>{{ b.units_consumed }} kWh</td>
+          <td>{{ b.energy_charge | currency }}</td>
+          <td style="font-weight: 700;">{{ b.total_amount | currency }}</td>
+          <td style="color: #10b981;">{{ b.amount_paid | currency }}</td>
+          <td style="font-weight: 700; color: {% if b.outstanding_amount > 0 %}#ef4444{% else %}#10b981{% endif %};">
+            {{ b.outstanding_amount | currency }}
+          </td>
+          <td>{{ b.due_date | date_format }}</td>
+          <td>
+            {% if b.payment_status == 'PAID' %}
+              <span class="badge badge-paid">PAID</span>
+            {% elif b.payment_status == 'PARTIALLY PAID' %}
+              <span class="badge badge-partially-paid">PARTIAL</span>
+            {% else %}
+              <span class="badge badge-unpaid">UNPAID</span>
+            {% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('bills.view', bill_id=b.bill_id) }}" class="btn btn-outline btn-sm">
+              <i class="fa-solid fa-eye"></i> View
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">No bills issued yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Meter Readings History -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-clock-rotate-left" style="color: var(--brand-blue);"></i> Meter Reading History</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Cycle</th>
+          <th>Reading Date</th>
+          <th>Previous Reading</th>
+          <th>Current Reading</th>
+          <th>Units Consumed</th>
+          <th>Billed Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in readings %}
+        <tr>
+          <td><strong>{{ r.reading_month }}</strong></td>
+          <td>{{ r.reading_date | date_format }}</td>
+          <td>{{ r.previous_reading }}</td>
+          <td>{{ r.current_reading }}</td>
+          <td style="font-weight: 600;">{{ r.units_consumed }} kWh</td>
+          <td>
+            {% if r.is_billed %}
+              <span class="badge badge-paid">Billed ({{ r.bill_number }})</span>
+            {% else %}
+              <span class="badge badge-unpaid">Unbilled</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">No meter readings on file.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

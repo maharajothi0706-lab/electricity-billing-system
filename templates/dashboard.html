@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Power Grid Utility{% endblock %}
+{% block page_title %}Executive Operational Dashboard{% endblock %}
+
+{% block content %}
+<!-- Database Notification Banner -->
+{% if not is_connected %}
+<div class="alert alert-info" style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between;">
+  <div>
+    <strong><i class="fa-solid fa-circle-info"></i> Running in Demo Mode (Local Engine Active):</strong>
+    <span> The system is fully operational. When you are ready to connect a local PostgreSQL server, start PostgreSQL and run <code>python init_db.py</code>.</span>
+  </div>
+  <button class="alert-close" title="Dismiss banner">&times;</button>
+</div>
+{% endif %}
+
+<!-- KPI Statistics Cards -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Active Consumers</h3>
+      <div class="stat-number">{{ stats.total_consumers }}</div>
+      <div class="stat-sub">Registered meters</div>
+    </div>
+    <div class="stat-icon blue">
+      <i class="fa-solid fa-users"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Consumption ({{ stats.current_month }})</h3>
+      <div class="stat-number">{{ stats.units_this_month | round(1) }} <span style="font-size: 14px; font-weight: normal;">kWh</span></div>
+      <div class="stat-sub">Monthly energy draw</div>
+    </div>
+    <div class="stat-icon green">
+      <i class="fa-solid fa-bolt"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Invoices Issued</h3>
+      <div class="stat-number">{{ stats.total_bills }}</div>
+      <div class="stat-sub">Lifetime bills generated</div>
+    </div>
+    <div class="stat-icon purple">
+      <i class="fa-solid fa-file-invoice-dollar"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Revenue Collected</h3>
+      <div class="stat-number">{{ stats.total_collected | currency }}</div>
+      <div class="stat-sub">Successful payments</div>
+    </div>
+    <div class="stat-icon green">
+      <i class="fa-solid fa-indian-rupee-sign"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Outstanding Dues</h3>
+      <div class="stat-number" style="color: #ef4444;">{{ stats.total_outstanding | currency }}</div>
+      <div class="stat-sub">Pending receivables</div>
+    </div>
+    <div class="stat-icon red">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-content">
+      <h3>Unpaid Bills</h3>
+      <div class="stat-number" style="color: #b45309;">{{ stats.unpaid_bills_count }}</div>
+      <div class="stat-sub">Requires follow-up</div>
+    </div>
+    <div class="stat-icon amber">
+      <i class="fa-solid fa-clock"></i>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Grid -->
+<div class="charts-grid">
+  <!-- Chart 1: Monthly Electricity Consumption -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3><i class="fa-solid fa-chart-column" style="color: var(--electric-green);"></i> Monthly Electricity Consumption</h3>
+      <span style="font-size: 12px; color: var(--text-muted);">Kilowatt-hours (kWh)</span>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="monthlyConsumptionChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 2: Monthly Revenue Billed vs Collected -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3><i class="fa-solid fa-chart-line" style="color: var(--brand-blue);"></i> Monthly Revenue Performance</h3>
+      <span style="font-size: 12px; color: var(--text-muted);">Billed vs Collected (₹)</span>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="revenueChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 3: Paid vs Unpaid Bills Status -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3><i class="fa-solid fa-chart-pie" style="color: #f59e0b;"></i> Invoices Settlement Distribution</h3>
+      <span style="font-size: 12px; color: var(--text-muted);">Status Breakdown</span>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="paymentStatusChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 4: Top 5 Consumers by Lifetime Units -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <h3><i class="fa-solid fa-ranking-star" style="color: #7e22ce;"></i> Top Consumers by Consumption</h3>
+      <span style="font-size: 12px; color: var(--text-muted);">Highest Draw</span>
+    </div>
+    <div class="chart-wrapper">
+      <canvas id="topConsumersChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Tables Grid: Unpaid Invoices & Recent Activities -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 24px;">
+
+  <!-- Unpaid Bills Requiring Action -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> Outstanding Bills (Action Required)</h3>
+      <a href="{{ url_for('bills.index', status='UNPAID') }}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Bill #</th>
+            <th>Consumer</th>
+            <th>Due Date</th>
+            <th>Outstanding</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in unpaid_bills %}
+          <tr>
+            <td>
+              <a href="{{ url_for('bills.view', bill_id=b.bill_id) }}" style="font-weight: 600; color: var(--brand-blue); text-decoration: none;">
+                {{ b.bill_number }}
+              </a>
+            </td>
+            <td>
+              <div><strong>{{ b.full_name }}</strong></div>
+              <small style="color: var(--text-muted);">{{ b.consumer_number }}</small>
+            </td>
+            <td>{{ b.due_date | date_format }}</td>
+            <td style="font-weight: 700; color: #ef4444;">{{ b.outstanding_amount | currency }}</td>
+            <td>
+              <button class="btn btn-success btn-sm" 
+                      data-modal-target="quickPayModal" 
+                      data-bill-id="{{ b.bill_id }}" 
+                      data-outstanding="{{ b.outstanding_amount }}">
+                <i class="fa-solid fa-credit-card"></i> Pay
+              </button>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">
+              <i class="fa-solid fa-check-circle" style="color: var(--electric-green); font-size: 20px;"></i>
+              <p style="margin-top: 6px;">All generated bills are currently fully settled!</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Meter Readings -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-clock-rotate-left" style="color: var(--brand-blue);"></i> Recent Meter Readings</h3>
+      <a href="{{ url_for('readings.index') }}" class="btn btn-outline btn-sm">View All</a>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Consumer</th>
+            <th>Current Rdg</th>
+            <th>Units</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in recent_readings %}
+          <tr>
+            <td><strong>{{ r.reading_month }}</strong></td>
+            <td>
+              <div>{{ r.full_name }}</div>
+              <small style="color: var(--text-muted);">{{ r.consumer_number }}</small>
+            </td>
+            <td>{{ r.current_reading }}</td>
+            <td style="font-weight: 600;">{{ r.units_consumed }} kWh</td>
+            <td>
+              {% if r.is_billed %}
+              <span class="badge badge-paid">Billed</span>
+              {% else %}
+              <span class="badge badge-unpaid">Pending</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No meter readings found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Quick Pay Modal -->
+<div class="modal-overlay" id="quickPayModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-credit-card" style="color: var(--electric-green);"></i> Record Bill Payment</h3>
+      <button class="modal-close-btn" data-modal-close>&times;</button>
+    </div>
+    <form method="POST" action="{{ url_for('payments.record') }}">
+      <div class="modal-body">
+        <input type="hidden" name="bill_id" id="modalBillId">
+
+        <div style="background-color: #f8fafc; padding: 12px; border-radius: var(--radius-sm); margin-bottom: 16px;">
+          <span style="font-size: 13px; color: var(--text-muted);">Total Outstanding Balance:</span>
+          <h2 style="color: #ef4444; font-size: 22px; font-weight: 700;" id="modalMaxOutstanding">₹0.00</h2>
+        </div>
+
+        <div class="form-group">
+          <label for="modalAmount"><i class="fa-solid fa-indian-rupee-sign"></i> Payment Amount (₹)</label>
+          <input type="number" step="0.01" min="1.00" name="amount" id="modalAmount" class="form-control" required>
+          <span class="form-hint">Partial payments are accepted. Overpayment beyond balance is rejected.</span>
+        </div>
+
+        <div class="form-group">
+          <label for="modalMethod"><i class="fa-solid fa-wallet"></i> Payment Method</label>
+          <select name="payment_method" id="modalMethod" class="form-control" required>
+            <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+            <option value="CASH">Counter Cash</option>
+            <option value="BANK_TRANSFER">Bank Transfer (NEFT / RTGS)</option>
+            <option value="NET_BANKING">Net Banking</option>
+            <option value="DEBIT_CARD">Debit / Credit Card</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="modalRemarks">Transaction Notes / Reference</label>
+          <input type="text" name="remarks" id="modalRemarks" class="form-control" placeholder="Optional notes or transaction ID">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-modal-close>Cancel</button>
+        <button type="submit" class="btn btn-success">
+          <i class="fa-solid fa-check"></i> Confirm Payment
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

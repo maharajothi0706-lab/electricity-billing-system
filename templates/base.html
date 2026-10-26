@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Electricity Billing & Consumption Management System{% endblock %}</title>
+  
+  <!-- Font Awesome 6 Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Main Custom Styling -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<div class="app-container">
+  {% if is_logged_in %}
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-icon">
+        <i class="fa-solid fa-bolt"></i>
+      </div>
+      <div class="brand-text">
+        <h2>POWER GRID</h2>
+        <span>Utility Management</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-title">Core Operations</div>
+      
+      <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+        <i class="fa-solid fa-gauge-high"></i> Dashboard
+      </a>
+
+      <a href="{{ url_for('consumers.index') }}" class="nav-link {% if 'consumers' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-users"></i> Consumers
+      </a>
+
+      <a href="{{ url_for('readings.index') }}" class="nav-link {% if 'readings' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-clock-rotate-left"></i> Meter Readings
+      </a>
+
+      <a href="{{ url_for('bills.generate') }}" class="nav-link {% if request.endpoint == 'bills.generate' %}active{% endif %}">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Bills
+      </a>
+
+      <a href="{{ url_for('bills.index') }}" class="nav-link {% if request.endpoint in ('bills.index', 'bills.view') %}active{% endif %}">
+        <i class="fa-solid fa-file-invoice-dollar"></i> Bills & Invoices
+      </a>
+
+      <a href="{{ url_for('payments.index') }}" class="nav-link {% if 'payments' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-credit-card"></i> Payments & Ledger
+      </a>
+
+      <div class="nav-section-title">Configuration & Reports</div>
+
+      <a href="{{ url_for('tariffs.index') }}" class="nav-link {% if 'tariffs' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-sliders"></i> Tariff Management
+      </a>
+
+      <a href="{{ url_for('reports.index') }}" class="nav-link {% if 'reports' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-chart-line"></i> Consumption Reports
+      </a>
+
+      <div class="nav-section-title">Academic & System</div>
+
+      <a href="{{ url_for('sql_guide.index') }}" class="nav-link {% if 'sql_guide' in request.endpoint %}active{% endif %}">
+        <i class="fa-solid fa-database"></i> SQL Concepts / Viva
+      </a>
+
+      <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}">
+        <i class="fa-solid fa-gear"></i> Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-badge">
+        <div class="user-avatar">
+          {{ current_user_name[0] | upper }}
+        </div>
+        <div class="user-meta">
+          <h4>{{ current_user_name }}</h4>
+          <p>{{ current_user_role }}</p>
+        </div>
+        <a href="{{ url_for('auth.logout') }}" style="margin-left: auto; color: #94a3b8;" title="Logout">
+          <i class="fa-solid fa-right-from-bracket"></i>
+        </a>
+      </div>
+    </div>
+  </aside>
+  {% endif %}
+
+  <!-- Main Content Body -->
+  <main class="main-content" {% if not is_logged_in %}style="margin-left:0;"{% endif %}>
+    {% if is_logged_in %}
+    <header class="topbar no-print">
+      <div class="topbar-left">
+        <button class="menu-toggle-btn" id="sidebarToggleBtn" aria-label="Toggle Menu">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="topbar-title">
+          <h1>{% block page_title %}Dashboard{% endblock %}</h1>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        {% if db_connected %}
+        <div class="db-status-pill connected" title="PostgreSQL server is connected">
+          <span class="pulse-dot"></span> PostgreSQL Active
+        </div>
+        {% else %}
+        <div class="db-status-pill" style="background-color: #dbeafe; color: #1e40af;" title="Using local database engine (PostgreSQL offline)">
+          <span class="pulse-dot" style="background-color: #3b82f6;"></span> Local Engine Active
+        </div>
+        {% endif %}
+
+        <span style="font-size: 13px; color: var(--text-muted);">
+          <i class="fa-regular fa-calendar"></i> {{ current_year }}
+        </span>
+      </div>
+    </header>
+    {% endif %}
+
+    <div class="page-body">
+      <!-- Flash Alert Messages -->
+      <div class="flash-messages no-print">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                <span>{{ message }}</span>
+                <button class="alert-close">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+<!-- Global Application Script -->
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+{% block extra_scripts %}{% endblock %}
+
+</body>
+</html>

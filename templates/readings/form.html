@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Record Meter Reading - Power Grid Utility{% endblock %}
+{% block page_title %}Record Monthly Meter Reading{% endblock %}
+
+{% block content %}
+<div style="max-width: 750px; margin: 0 auto;">
+  <div class="card">
+    <div class="card-header">
+      <h3>
+        <i class="fa-solid fa-gauge-high" style="color: var(--brand-blue);"></i>
+        Meter Consumption Entry Form
+      </h3>
+      <a href="{{ url_for('readings.index') }}" class="btn btn-outline btn-sm">
+        <i class="fa-solid fa-arrow-left"></i> Back to Readings
+      </a>
+    </div>
+
+    <form method="POST" action="{{ url_for('readings.add') }}">
+      <div class="card-body">
+        
+        <!-- Consumer Selector -->
+        <div class="form-group">
+          <label for="readingConsumerSelect">Select Consumer Account <span style="color: #ef4444;">*</span></label>
+          <select id="readingConsumerSelect" name="consumer_id" class="form-control" required>
+            <option value="">-- Choose registered consumer --</option>
+            {% for c in consumers %}
+            <option value="{{ c.consumer_id }}" {% if preselected_consumer|string == c.consumer_id|string %}selected{% endif %}>
+              {{ c.consumer_number }} - {{ c.full_name }} (Meter: {{ c.meter_number }} | {{ c.connection_type }})
+            </option>
+            {% endfor %}
+          </select>
+          <span class="form-hint">Selecting a consumer will automatically retrieve their last confirmed reading.</span>
+        </div>
+
+        <div class="form-grid">
+          <!-- Reading Billing Cycle Month -->
+          <div class="form-group">
+            <label for="reading_month">Billing Cycle Month (YYYY-MM) <span style="color: #ef4444;">*</span></label>
+            <input type="month" id="reading_month" name="reading_month" class="form-control" value="{{ current_month }}" required>
+            <span class="form-hint">Format: YYYY-MM (e.g. 2026-10)</span>
+          </div>
+
+          <!-- Reading Date -->
+          <div class="form-group">
+            <label for="reading_date">Meter Inspection Date <span style="color: #ef4444;">*</span></label>
+            <input type="date" id="reading_date" name="reading_date" class="form-control" value="{{ today_date }}" required>
+          </div>
+
+          <!-- Previous Reading -->
+          <div class="form-group">
+            <label for="prevReadingInput">Previous Meter Reading (kWh) <span style="color: #ef4444;">*</span></label>
+            <input type="number" step="0.01" min="0" id="prevReadingInput" name="previous_reading" class="form-control" value="0.00" required>
+            <span class="form-hint">Auto-populated from last cycle, or initial baseline for new meters</span>
+          </div>
+
+          <!-- Current Reading -->
+          <div class="form-group">
+            <label for="currReadingInput">Current Meter Reading (kWh) <span style="color: #ef4444;">*</span></label>
+            <input type="number" step="0.01" min="0" id="currReadingInput" name="current_reading" class="form-control" placeholder="0.00" required>
+            <span class="form-hint">Physical reading displayed on meter dial</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Units Consumed Calculation Box -->
+        <div style="background-color: #f8fafc; border: 1px dashed var(--border); border-radius: var(--radius-md); padding: 18px; margin: 16px 0; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Calculated Units Consumed:</span>
+            <div style="font-size: 12px; color: var(--text-muted);">Current Reading − Previous Reading</div>
+          </div>
+          <div style="text-align: right;">
+            <span id="unitsConsumedPreview" style="font-size: 26px; font-weight: 800; color: #059669;">0.00</span>
+            <span style="font-size: 14px; font-weight: 600; color: var(--text-muted);">kWh</span>
+          </div>
+        </div>
+
+        <!-- Remarks -->
+        <div class="form-group">
+          <label for="reading_remarks">Meter Inspector Remarks</label>
+          <input type="text" id="reading_remarks" name="reading_remarks" class="form-control" placeholder="e.g. Regular monthly meter log, seal verified intact">
+        </div>
+      </div>
+
+      <div class="card-header" style="justify-content: flex-end; gap: 12px; background-color: #f8fafc;">
+        <a href="{{ url_for('readings.index') }}" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i> Save Meter Reading
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

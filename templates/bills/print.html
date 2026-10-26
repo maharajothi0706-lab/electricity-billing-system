@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Electricity Bill - {{ bill.bill_number }}</title>
+  <style>
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      color: #1e293b;
+      margin: 0;
+      padding: 30px;
+      font-size: 13px;
+      line-height: 1.4;
+      background: #ffffff;
+    }
+    .bill-wrapper {
+      max-width: 800px;
+      margin: 0 auto;
+      border: 2px solid #0f172a;
+      padding: 28px;
+    }
+    .bill-header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+    }
+    .utility-logo h1 {
+      margin: 0;
+      font-size: 22px;
+      color: #0f172a;
+      letter-spacing: -0.5px;
+    }
+    .utility-logo span {
+      font-size: 12px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .bill-meta {
+      text-align: right;
+    }
+    .bill-meta h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #1e3a8a;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    .info-box {
+      border: 1px solid #cbd5e1;
+      padding: 12px;
+      border-radius: 4px;
+    }
+    .info-box h4 {
+      margin: 0 0 8px 0;
+      font-size: 12px;
+      text-transform: uppercase;
+      color: #475569;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 4px;
+    }
+    .reading-table, .charges-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    .reading-table th, .charges-table th {
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      text-align: left;
+      font-size: 12px;
+    }
+    .reading-table td, .charges-table td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      font-size: 12px;
+    }
+    .totals-box {
+      margin-left: auto;
+      width: 300px;
+      border: 2px solid #0f172a;
+      margin-bottom: 20px;
+    }
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .totals-row.final {
+      background-color: #f8fafc;
+      font-size: 15px;
+      font-weight: 800;
+      border-bottom: none;
+    }
+    .status-stamp {
+      display: inline-block;
+      padding: 6px 14px;
+      border: 2px solid;
+      border-radius: 4px;
+      font-weight: 800;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .status-paid { color: #16a34a; border-color: #16a34a; }
+    .status-partial { color: #d97706; border-color: #d97706; }
+    .status-unpaid { color: #dc2626; border-color: #dc2626; }
+    .tear-off {
+      border-top: 2px dashed #94a3b8;
+      margin-top: 24px;
+      padding-top: 16px;
+      font-size: 11px;
+      color: #64748b;
+    }
+    @media print {
+      body { padding: 0; }
+      .no-print { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="no-print" style="max-width: 800px; margin: 0 auto 16px auto; display: flex; justify-content: space-between;">
+  <a href="javascript:window.history.back()" style="color: #2563eb; text-decoration: none;">&larr; Back to System</a>
+  <button onclick="window.print()" style="background: #1e3a8a; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 600;">
+    Print Official Bill
+  </button>
+</div>
+
+<div class="bill-wrapper">
+  <!-- Header -->
+  <div class="bill-header">
+    <div class="utility-logo">
+      <h1>METROPOLIS POWER UTILITY DISTRIBUTION CORP.</h1>
+      <span>Government Registered Utility • Electricity Supply Division</span>
+    </div>
+    <div class="bill-meta">
+      <h2>ELECTRICITY INVOICE</h2>
+      <div>Bill No: <strong>{{ bill.bill_number }}</strong></div>
+      <div>Billing Month: <strong>{{ bill.billing_period }}</strong></div>
+    </div>
+  </div>
+
+  <!-- Consumer and Dates Grid -->
+  <div class="info-grid">
+    <div class="info-box">
+      <h4>Consumer Information</h4>
+      <div><strong>{{ bill.full_name }}</strong></div>
+      <div>Account No: <strong>{{ bill.consumer_number }}</strong></div>
+      <div>Meter Serial: <strong>{{ bill.meter_number }}</strong></div>
+      <div>Category: {{ bill.connection_type }}</div>
+      <div>Address: {{ bill.address }}, {{ bill.city }}</div>
+      <div>Phone: {{ bill.phone_number }}</div>
+    </div>
+
+    <div class="info-box">
+      <h4>Invoice Schedule & Status</h4>
+      <div>Bill Issue Date: <strong>{{ bill.bill_date | date_format }}</strong></div>
+      <div>Payment Due Date: <strong>{{ bill.due_date | date_format }}</strong></div>
+      <div style="margin-top: 10px;">
+        Payment Status:
+        {% if bill.payment_status == 'PAID' %}
+          <span class="status-stamp status-paid">PAID IN FULL</span>
+        {% elif bill.payment_status == 'PARTIALLY PAID' %}
+          <span class="status-stamp status-partial">PARTIALLY PAID</span>
+        {% else %}
+          <span class="status-stamp status-unpaid">PAYMENT DUE</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Meter Readings Table -->
+  <table class="reading-table">
+    <thead>
+      <tr>
+        <th>Meter Number</th>
+        <th>Previous Reading (kWh)</th>
+        <th>Current Reading (kWh)</th>
+        <th>Billed Units Consumed (kWh)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>{{ bill.meter_number }}</code></td>
+        <td>{{ bill.previous_reading }}</td>
+        <td>{{ bill.current_reading }}</td>
+        <td style="font-weight: 800; font-size: 14px;">{{ bill.units_consumed }} kWh</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Itemized Progressive Slab Breakdown -->
+  <table class="charges-table">
+    <thead>
+      <tr>
+        <th>Item Description</th>
+        <th>Units (kWh)</th>
+        <th>Rate (₹/Unit)</th>
+        <th style="text-align: right;">Amount (₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.description }}</td>
+        <td>{% if item.units > 0 %}{{ item.units }}{% else %}—{% endif %}</td>
+        <td>{% if item.rate > 0 %}₹{{ item.rate }}{% else %}—{% endif %}</td>
+        <td style="text-align: right;">{{ item.amount | currency }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Totals Summary Box -->
+  <div class="totals-box">
+    <div class="totals-row">
+      <span>Energy Charges:</span>
+      <span>{{ bill.energy_charge | currency }}</span>
+    </div>
+    <div class="totals-row">
+      <span>Standing Fixed Charge:</span>
+      <span>{{ bill.fixed_charge | currency }}</span>
+    </div>
+    <div class="totals-row">
+      <span>Electricity Duty / Tax:</span>
+      <span>{{ bill.tax_amount | currency }}</span>
+    </div>
+    <div class="totals-row" style="font-weight: 700;">
+      <span>Total Invoiced:</span>
+      <span>{{ bill.total_amount | currency }}</span>
+    </div>
+    <div class="totals-row" style="color: #16a34a;">
+      <span>Total Paid to Date:</span>
+      <span>- {{ bill.amount_paid | currency }}</span>
+    </div>
+    <div class="totals-row final">
+      <span>Net Amount Payable:</span>
+      <span style="color: {% if bill.outstanding_amount > 0 %}#dc2626{% else %}#16a34a{% endif %};">
+        {{ bill.outstanding_amount | currency }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Bank / Counter Tear-off Slip -->
+  <div class="tear-off">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <strong>COUNTER PAYMENT SLIP (CUSTOMER COPY)</strong><br>
+        Bill No: {{ bill.bill_number }} • Consumer: {{ bill.consumer_number }} ({{ bill.full_name }})<br>
+        Amount Due: {{ bill.outstanding_amount | currency }} by Due Date {{ bill.due_date | date_format }}
+      </div>
+      <div style="border: 1px solid #94a3b8; padding: 12px 20px; text-align: center;">
+        Cashier Seal & Signature
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Electricity Utility System{% endblock %}
+
+{% block content %}
+<div style="min-height: 80vh; display: flex; align-items: center; justify-content: center;">
+  <div style="max-width: 440px; width: 100%; background: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 36px; box-shadow: var(--shadow-lg);">
+    
+    <div style="text-align: center; margin-bottom: 28px;">
+      <div style="width: 54px; height: 54px; background: linear-gradient(135deg, #10b981 0%, #1e3a8a 100%); border-radius: var(--radius-md); display: inline-flex; align-items: center; justify-content: center; color: #fff; font-size: 26px; margin-bottom: 14px;">
+        <i class="fa-solid fa-bolt"></i>
+      </div>
+      <h2 style="font-size: 20px; font-weight: 800; color: var(--text-main); margin-bottom: 4px;">POWER GRID UTILITY</h2>
+      <p style="font-size: 13px; color: var(--text-muted);">Electricity Billing & Consumption System</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+      <div class="form-group">
+        <label for="username"><i class="fa-solid fa-user"></i> Username</label>
+        <input type="text" id="username" name="username" class="form-control" placeholder="e.g. admin or operator" required autofocus>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label for="password"><i class="fa-solid fa-lock"></i> Password</label>
+        <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 11px; font-size: 14px;">
+        <i class="fa-solid fa-arrow-right-to-bracket"></i> Sign In to Dashboard
+      </button>
+    </form>
+
+    <div style="margin-top: 24px; padding: 14px; background-color: #f8fafc; border-radius: var(--radius-sm); border: 1px dashed var(--border); font-size: 12px; color: var(--text-muted);">
+      <strong style="color: var(--text-main); display: block; margin-bottom: 4px;">Demo Credentials:</strong>
+      <div>• <strong>Administrator:</strong> <code>admin</code> / <code>admin123</code></div>
+      <div>• <strong>Billing Operator:</strong> <code>operator</code> / <code>operator123</code></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

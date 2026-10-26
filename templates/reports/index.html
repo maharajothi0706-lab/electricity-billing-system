@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Consumption & Financial Reports - Power Grid Utility{% endblock %}
+{% block page_title %}Operational & Analytical Reports{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <div>
+    <h2 style="font-size: 18px; font-weight: 700;">Utility Analytical Reports</h2>
+    <p style="font-size: 13px; color: var(--text-muted);">SQL aggregation queries, consumption patterns, collection efficiency, and anomaly audits</p>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <button onclick="window.print()" class="btn btn-outline">
+      <i class="fa-solid fa-print"></i> Print Report
+    </button>
+    <a href="{{ url_for('reports.export', type=report_type, period=selected_period, conn_type=selected_conn_type) }}" class="btn btn-success">
+      <i class="fa-solid fa-file-csv"></i> Export to CSV
+    </a>
+  </div>
+</div>
+
+<!-- Report Navigation Tabs -->
+<div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px;" class="no-print">
+  <a href="{{ url_for('reports.index', type='monthly_consumption') }}" 
+     class="btn {% if report_type == 'monthly_consumption' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+    <i class="fa-solid fa-chart-column"></i> Monthly Consumption
+  </a>
+
+  <a href="{{ url_for('reports.index', type='revenue_summary') }}" 
+     class="btn {% if report_type == 'revenue_summary' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+    <i class="fa-solid fa-indian-rupee-sign"></i> Revenue Performance
+  </a>
+
+  <a href="{{ url_for('reports.index', type='top_consumers') }}" 
+     class="btn {% if report_type == 'top_consumers' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+    <i class="fa-solid fa-ranking-star"></i> Top Consumers
+  </a>
+
+  <a href="{{ url_for('reports.index', type='unpaid_bills') }}" 
+     class="btn {% if report_type == 'unpaid_bills' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+    <i class="fa-solid fa-triangle-exclamation"></i> Outstanding Bills
+  </a>
+
+  <a href="{{ url_for('reports.index', type='anomalies') }}" 
+     class="btn {% if report_type == 'anomalies' %}btn-primary{% else %}btn-outline{% endif %} btn-sm">
+    <i class="fa-solid fa-chart-line-up"></i> Spike Anomalies (>30%)
+  </a>
+</div>
+
+<!-- Dynamic Filter Sub-bar (if applicable) -->
+{% if report_type in ('unpaid_bills', 'anomalies') %}
+<form method="GET" action="{{ url_for('reports.index') }}" class="filter-bar no-print" style="margin-bottom: 20px;">
+  <input type="hidden" name="type" value="{{ report_type }}">
+
+  {% if report_type == 'unpaid_bills' %}
+  <div>
+    <label style="font-size: 12px; font-weight: 600; margin-right: 8px;">Filter Category:</label>
+    <select name="conn_type" class="form-control" onchange="this.form.submit()" style="display: inline-block; width: auto;">
+      <option value="ALL">All Categories</option>
+      <option value="DOMESTIC" {% if selected_conn_type == 'DOMESTIC' %}selected{% endif %}>Domestic</option>
+      <option value="COMMERCIAL" {% if selected_conn_type == 'COMMERCIAL' %}selected{% endif %}>Commercial</option>
+      <option value="INDUSTRIAL" {% if selected_conn_type == 'INDUSTRIAL' %}selected{% endif %}>Industrial</option>
+    </select>
+  </div>
+  {% endif %}
+
+  {% if report_type == 'anomalies' %}
+  <div>
+    <label style="font-size: 12px; font-weight: 600; margin-right: 8px;">Audit Billing Cycle:</label>
+    <select name="period" class="form-control" onchange="this.form.submit()" style="display: inline-block; width: auto;">
+      {% for p in periods %}
+      <option value="{{ p }}" {% if selected_period == p %}selected{% endif %}>{{ p }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endif %}
+</form>
+{% endif %}
+
+<!-- Report Content Body -->
+<div class="card">
+  <div class="card-header">
+    <h3>
+      {% if report_type == 'monthly_consumption' %}
+        <i class="fa-solid fa-chart-column" style="color: var(--electric-green);"></i> Monthly Electricity Consumption Summary (View: monthly_consumption_summary)
+      {% elif report_type == 'revenue_summary' %}
+        <i class="fa-solid fa-indian-rupee-sign" style="color: var(--brand-blue);"></i> Monthly Billing & Revenue Collection Summary (View: v_revenue_by_month)
+      {% elif report_type == 'top_consumers' %}
+        <i class="fa-solid fa-ranking-star" style="color: #7e22ce;"></i> Highest Consumption Consumers (View: v_top_consumers)
+      {% elif report_type == 'unpaid_bills' %}
+        <i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> Outstanding Unsettled Bills Summary (View: v_unpaid_bills)
+      {% elif report_type == 'anomalies' %}
+        <i class="fa-solid fa-bolt" style="color: #b45309;"></i> Consumption Anomaly Report: Spike > 30% Above Past Average for {{ selected_period }}
+      {% endif %}
+    </h3>
+    <span style="font-size: 12px; color: var(--text-muted);">{{ data | length }} Records Found</span>
+  </div>
+
+  <div class="table-responsive">
+    <!-- 1. Monthly Consumption -->
+    {% if report_type == 'monthly_consumption' %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Billing Month</th>
+          <th>Consumers Read</th>
+          <th>Total Consumption</th>
+          <th>Average per Consumer</th>
+          <th>Min Usage</th>
+          <th>Max Usage</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in data %}
+        <tr>
+          <td><strong>{{ r.reading_month }}</strong></td>
+          <td>{{ r.active_consumers_read }}</td>
+          <td style="font-weight: 700; color: #047857;">{{ r.total_units_consumed }} kWh</td>
+          <td>{{ r.average_units_consumed }} kWh</td>
+          <td>{{ r.minimum_units_consumed }} kWh</td>
+          <td style="color: #7e22ce; font-weight: 600;">{{ r.maximum_units_consumed }} kWh</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- 2. Revenue Summary -->
+    {% elif report_type == 'revenue_summary' %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Cycle</th>
+          <th>Bills Issued</th>
+          <th>Units Billed</th>
+          <th>Energy Charge</th>
+          <th>Fixed Standing</th>
+          <th>Total Invoiced</th>
+          <th>Collected</th>
+          <th>Outstanding</th>
+          <th>Efficiency (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in data %}
+        <tr>
+          <td><strong>{{ r.billing_period }}</strong></td>
+          <td>{{ r.total_bills_issued }}</td>
+          <td>{{ r.total_units_billed }} kWh</td>
+          <td>{{ r.total_energy_charge | currency }}</td>
+          <td>{{ r.total_fixed_charge | currency }}</td>
+          <td style="font-weight: 700;">{{ r.total_billed_amount | currency }}</td>
+          <td style="color: #059669; font-weight: 700;">{{ r.total_collected_amount | currency }}</td>
+          <td style="color: #ef4444;">{{ r.total_outstanding_amount | currency }}</td>
+          <td>
+            <span class="badge {% if r.collection_efficiency_percentage >= 80 %}badge-paid{% elif r.collection_efficiency_percentage >= 50 %}badge-partially-paid{% else %}badge-unpaid{% endif %}">
+              {{ r.collection_efficiency_percentage }}%
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- 3. Top Consumers -->
+    {% elif report_type == 'top_consumers' %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Consumer #</th>
+          <th>Full Name</th>
+          <th>Category</th>
+          <th>Meter Hardware</th>
+          <th>Lifetime Consumption</th>
+          <th>Avg Monthly Usage</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in data %}
+        <tr>
+          <td>
+            <div style="width: 28px; height: 28px; border-radius: 50%; background-color: var(--brand-blue); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 12px;">
+              #{{ r.consumption_rank }}
+            </div>
+          </td>
+          <td><code>{{ r.consumer_number }}</code></td>
+          <td><strong>{{ r.full_name }}</strong></td>
+          <td><span class="badge badge-domestic">{{ r.connection_type }}</span></td>
+          <td><code>{{ r.meter_number }}</code></td>
+          <td style="font-weight: 700; color: #047857; font-size: 14px;">{{ r.lifetime_units_consumed }} kWh</td>
+          <td>{{ r.avg_monthly_units }} kWh</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- 4. Unpaid Bills -->
+    {% elif report_type == 'unpaid_bills' %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Invoice #</th>
+          <th>Consumer</th>
+          <th>Category</th>
+          <th>Contact</th>
+          <th>Units</th>
+          <th>Total Amount</th>
+          <th>Paid</th>
+          <th>Outstanding</th>
+          <th>Due Date</th>
+          <th>Overdue Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in data %}
+        <tr>
+          <td><a href="{{ url_for('bills.view', bill_id=r.bill_id) }}" style="font-weight: 700; color: var(--brand-blue);">{{ r.bill_number }}</a></td>
+          <td>{{ r.full_name }} ({{ r.consumer_number }})</td>
+          <td><span class="badge badge-domestic">{{ r.connection_type }}</span></td>
+          <td>{{ r.phone_number }}</td>
+          <td>{{ r.units_consumed }} kWh</td>
+          <td>{{ r.total_amount | currency }}</td>
+          <td style="color: #059669;">{{ r.amount_paid | currency }}</td>
+          <td style="font-weight: 700; color: #ef4444;">{{ r.outstanding_amount | currency }}</td>
+          <td>{{ r.due_date | date_format }}</td>
+          <td>
+            {% if r.is_overdue %}
+              <span class="badge badge-unpaid">OVERDUE ({{ r.days_overdue }} days)</span>
+            {% else %}
+              <span class="badge badge-partially-paid">Within Term</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- 5. Anomalies -->
+    {% elif report_type == 'anomalies' %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Consumer #</th>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Contact</th>
+          <th>Current Cycle Draw</th>
+          <th>Historical Average</th>
+          <th>Spike Units (+&Delta;)</th>
+          <th>Increase (%)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in data %}
+        <tr>
+          <td><code>{{ r.consumer_number }}</code></td>
+          <td><strong>{{ r.full_name }}</strong></td>
+          <td><span class="badge badge-domestic">{{ r.connection_type }}</span></td>
+          <td>{{ r.phone_number }}</td>
+          <td style="font-weight: 700; color: #ef4444; font-size: 14px;">{{ r.current_month_units }} kWh</td>
+          <td>{{ r.historical_average_units }} kWh</td>
+          <td style="font-weight: 700; color: #b45309;">+{{ r.spike_difference }} kWh</td>
+          <td>
+            <span class="badge badge-unpaid" style="font-size: 12px;">
+              +{{ r.percentage_increase }}%
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 36px;">
+            <i class="fa-solid fa-circle-check" style="color: var(--electric-green); font-size: 28px; margin-bottom: 8px;"></i>
+            <p>No abnormal consumption surges detected above 30% for cycle {{ selected_period }}.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

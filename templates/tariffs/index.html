@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Tariff Management - Power Grid Utility{% endblock %}
+{% block page_title %}Electricity Tariff Schedules & Progressive Slabs{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <div>
+    <h2 style="font-size: 18px; font-weight: 700;">Configured Tariff Schedules</h2>
+    <p style="font-size: 13px; color: var(--text-muted);">Configurable tiered slab pricing across Domestic, Commercial, and Industrial categories</p>
+  </div>
+</div>
+
+<!-- Interactive Progressive Slab Simulation Tool -->
+<div class="card" style="margin-bottom: 28px; background: linear-gradient(to right, #ffffff, #f8fafc); border-left: 4px solid var(--electric-green);">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-calculator" style="color: var(--electric-green);"></i> Interactive Progressive Slab Calculator (Viva / Demo Simulator)</h3>
+  </div>
+  <div class="card-body">
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 16px;">
+      Test and verify the progressive tiered slab calculation algorithm in real-time. E.g., for Domestic with 250 units: 
+      <code>(100 × ₹2.00) + (100 × ₹3.00) + (50 × ₹5.00) + ₹100.00 fixed = ₹850.00</code>
+    </p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+      <div style="flex: 1; min-width: 200px;">
+        <label for="simTariff" style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">Select Tariff Schedule</label>
+        <select id="simTariff" class="form-control">
+          {% for t in tariffs %}
+          <option value="{{ t.tariff_id }}">{{ t.tariff_name }} (Fixed: ₹{{ t.fixed_charge }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="width: 180px;">
+        <label for="simUnits" style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;">Consumption Units (kWh)</label>
+        <input type="number" id="simUnits" class="form-control" value="250" min="0" step="1">
+      </div>
+
+      <button type="button" id="btnSimulate" class="btn btn-primary" style="height: 40px;">
+        <i class="fa-solid fa-play"></i> Compute Charges
+      </button>
+    </div>
+
+    <!-- Live Simulation Output Area -->
+    <div id="simOutput" style="display: none; margin-top: 20px; padding: 18px; background-color: #ffffff; border: 1px solid var(--border); border-radius: var(--radius-md);">
+      <h4 style="font-size: 14px; font-weight: 700; margin-bottom: 12px; color: var(--brand-blue);" id="simPlanTitle"></h4>
+      
+      <div class="table-responsive">
+        <table class="table" style="font-size: 13px;">
+          <thead>
+            <tr>
+              <th>Tier Bracket</th>
+              <th>Units Applied</th>
+              <th>Rate / Unit</th>
+              <th style="text-align: right;">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody id="simBreakdownBody"></tbody>
+          <tfoot style="font-weight: 700; background-color: #f8fafc;">
+            <tr>
+              <td colspan="3" style="text-align: right;">Energy Charges Subtotal:</td>
+              <td style="text-align: right;" id="simEnergyTotal"></td>
+            </tr>
+            <tr>
+              <td colspan="3" style="text-align: right;">Standing Fixed Charge:</td>
+              <td style="text-align: right;" id="simFixedCharge"></td>
+            </tr>
+            <tr>
+              <td colspan="3" style="text-align: right;">Electricity Duty / Surcharge:</td>
+              <td style="text-align: right;" id="simTaxAmount"></td>
+            </tr>
+            <tr style="border-top: 2px solid var(--border); font-size: 15px; color: var(--brand-blue);">
+              <td colspan="3" style="text-align: right;">Total Estimated Bill:</td>
+              <td style="text-align: right;" id="simGrandTotal"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Configured Tariffs Cards Grid -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px;">
+  {% for t in tariffs %}
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 style="font-size: 16px;">{{ t.tariff_name }}</h3>
+        <span style="font-size: 12px; color: var(--text-muted);">
+          Connection: <strong>{{ t.connection_type }}</strong> • Fixed Monthly: <strong>{{ t.fixed_charge | currency }}</strong>
+        </span>
+      </div>
+      {% if current_user_role == 'ADMIN' %}
+      <a href="{{ url_for('tariffs.edit', tariff_id=t.tariff_id) }}" class="btn btn-outline btn-sm">
+        <i class="fa-solid fa-pen"></i> Edit Slabs
+      </a>
+      {% endif %}
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Slab #</th>
+            <th>Bracket Range</th>
+            <th>Rate / kWh</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in t.slabs %}
+          <tr>
+            <td><strong>#{{ s.slab_number }}</strong></td>
+            <td>
+              {% if s.max_units %}
+                {{ s.min_units | round(0) }} - {{ s.max_units | round(0) }} units
+              {% else %}
+                Above {{ s.min_units | round(0) }} units
+              {% endif %}
+            </td>
+            <td style="font-weight: 700; color: #059669;">₹{{ s.rate_per_unit }}</td>
+            <td style="font-size: 12px; color: var(--text-muted);">{{ s.slab_description or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const btnSim = document.getElementById('btnSimulate');
+  if (btnSim) {
+    btnSim.addEventListener('click', async () => {
+      const tariffId = document.getElementById('simTariff').value;
+      const units = document.getElementById('simUnits').value;
+
+      try {
+        const res = await fetch('/tariffs/api/simulate-calc', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tariff_id: parseInt(tariffId), units: parseFloat(units) })
+        });
+        if (!res.ok) throw new Error('Simulation failed');
+        const data = await res.json();
+
+        document.getElementById('simPlanTitle').textContent = `${data.tariff_name} — Consumption: ${data.units} kWh`;
+        const tbody = document.getElementById('simBreakdownBody');
+        tbody.innerHTML = '';
+
+        data.breakdown.forEach(item => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td>${item.description}</td>
+            <td>${item.units} kWh</td>
+            <td>₹${item.rate.toFixed(2)}</td>
+            <td style="text-align: right; font-weight: 600;">₹${item.amount.toFixed(2)}</td>
+          `;
+          tbody.appendChild(row);
+        });
+
+        document.getElementById('simEnergyTotal').textContent = `₹${data.energy_charge.toFixed(2)}`;
+        document.getElementById('simFixedCharge').textContent = `₹${data.fixed_charge.toFixed(2)}`;
+        document.getElementById('simTaxAmount').textContent = `₹${data.tax_amount.toFixed(2)}`;
+        document.getElementById('simGrandTotal').textContent = `₹${data.total_amount.toFixed(2)}`;
+
+        document.getElementById('simOutput').style.display = 'block';
+      } catch (err) {
+        alert('Could not compute tariff: ' + err.message);
+      }
+    });
+  }
+</script>
+{% endblock %}

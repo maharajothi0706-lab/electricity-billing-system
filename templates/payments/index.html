@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}Payments & Collections - Power Grid Utility{% endblock %}
+{% block page_title %}Payments & Collection Ledger{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <div>
+    <h2 style="font-size: 18px; font-weight: 700;">Revenue Collections</h2>
+    <p style="font-size: 13px; color: var(--text-muted);">Track consumer payments, receipts, settlement methods, and audit logs</p>
+  </div>
+  <a href="{{ url_for('payments.record') }}" class="btn btn-success">
+    <i class="fa-solid fa-plus"></i> Record New Payment
+  </a>
+</div>
+
+<!-- Filter Bar -->
+<form method="GET" action="{{ url_for('payments.index') }}" class="filter-bar">
+  <div class="search-input">
+    <input type="text" name="search" class="form-control" placeholder="Search by receipt #, bill #, or consumer..." value="{{ search }}">
+  </div>
+
+  <div>
+    <select name="method" class="form-control" onchange="this.form.submit()">
+      <option value="ALL">All Payment Methods</option>
+      <option value="UPI" {% if selected_method == 'UPI' %}selected{% endif %}>UPI</option>
+      <option value="CASH" {% if selected_method == 'CASH' %}selected{% endif %}>Cash</option>
+      <option value="BANK_TRANSFER" {% if selected_method == 'BANK_TRANSFER' %}selected{% endif %}>Bank Transfer</option>
+      <option value="NET_BANKING" {% if selected_method == 'NET_BANKING' %}selected{% endif %}>Net Banking</option>
+      <option value="DEBIT_CARD" {% if selected_method == 'DEBIT_CARD' %}selected{% endif %}>Debit Card</option>
+    </select>
+  </div>
+
+  <div>
+    <select name="status" class="form-control" onchange="this.form.submit()">
+      <option value="ALL">All Statuses</option>
+      <option value="SUCCESS" {% if selected_status == 'SUCCESS' %}selected{% endif %}>Success</option>
+      <option value="CANCELLED" {% if selected_status == 'CANCELLED' %}selected{% endif %}>Cancelled / Reversed</option>
+    </select>
+  </div>
+
+  <button type="submit" class="btn btn-outline">
+    <i class="fa-solid fa-filter"></i> Apply
+  </button>
+
+  {% if search or (selected_method and selected_method != 'ALL') or (selected_status and selected_status != 'ALL') %}
+  <a href="{{ url_for('payments.index') }}" class="btn btn-outline" style="color: #ef4444;">
+    <i class="fa-solid fa-xmark"></i> Clear
+  </a>
+  {% endif %}
+</form>
+
+<!-- Payments Table -->
+<div class="card">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-credit-card" style="color: var(--brand-blue);"></i> Recorded Payment Receipts</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Receipt Ref</th>
+          <th>Date & Time</th>
+          <th>Invoice #</th>
+          <th>Consumer</th>
+          <th>Amount Paid</th>
+          <th>Payment Method</th>
+          <th>Cashier</th>
+          <th>Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in payments %}
+        <tr>
+          <td><code>{{ p.payment_reference }}</code></td>
+          <td>{{ p.payment_date | date_format("%d %b %Y, %I:%M %p") }}</td>
+          <td>
+            <a href="{{ url_for('bills.view', bill_id=p.bill_id) }}" style="color: var(--brand-blue); font-weight: 600; text-decoration: none;">
+              {{ p.bill_number }}
+            </a>
+          </td>
+          <td>
+            <div>{{ p.full_name }}</div>
+            <small style="color: var(--text-muted);">{{ p.consumer_number }}</small>
+          </td>
+          <td style="font-weight: 700; color: #059669; font-size: 14px;">{{ p.amount_paid | currency }}</td>
+          <td><span class="badge badge-domestic">{{ p.payment_method }}</span></td>
+          <td>{{ p.recorded_by }}</td>
+          <td>
+            {% if p.payment_status == 'SUCCESS' %}
+              <span class="badge badge-paid">SUCCESS</span>
+            {% else %}
+              <span class="badge badge-unpaid">CANCELLED</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            {% if p.payment_status == 'SUCCESS' and current_user_role == 'ADMIN' %}
+            <button class="btn btn-danger btn-sm" 
+                    data-modal-target="reversalModal" 
+                    data-payment-id="{{ p.payment_id }}">
+              <i class="fa-solid fa-rotate-left"></i> Reverse
+            </button>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 36px;">
+            <i class="fa-solid fa-receipt" style="font-size: 32px; color: #cbd5e1; margin-bottom: 8px;"></i>
+            <p>No payment transactions recorded matching criteria.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Payment Reversals Audit Log Table -->
+<div class="card" style="margin-top: 28px;">
+  <div class="card-header">
+    <h3><i class="fa-solid fa-clock-rotate-left" style="color: #ef4444;"></i> Audited Payment Cancellations & Reversals</h3>
+    <span style="font-size: 12px; color: var(--text-muted);">Immutable audit trail for financial accountability</span>
+  </div>
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Audit ID</th>
+          <th>Original Receipt</th>
+          <th>Invoice #</th>
+          <th>Consumer</th>
+          <th>Reversed Amount</th>
+          <th>Reversal Justification</th>
+          <th>Authorized By</th>
+          <th>Timestamp</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reversals %}
+        <tr>
+          <td><strong>#REV-{{ r.reversal_id }}</strong></td>
+          <td><code>{{ r.payment_reference }}</code></td>
+          <td>{{ r.bill_number }}</td>
+          <td>{{ r.full_name }} ({{ r.consumer_number }})</td>
+          <td style="font-weight: 700; color: #ef4444;">{{ r.reversed_amount | currency }}</td>
+          <td>{{ r.reversal_reason }}</td>
+          <td><strong>{{ r.reversed_by }}</strong></td>
+          <td>{{ r.reversed_at | date_format("%d %b %Y, %I:%M %p") }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 20px;">
+            No payment reversals recorded.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Payment Reversal Modal -->
+<div class="modal-overlay" id="reversalModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3><i class="fa-solid fa-triangle-exclamation" style="color: #ef4444;"></i> Reverse / Cancel Payment</h3>
+      <button class="modal-close-btn" data-modal-close>&times;</button>
+    </div>
+    <form id="reversalForm" method="POST" action="">
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          Cancelling this payment will restore the invoice balance and update the consumer's outstanding ledger. The transaction record will be preserved with an immutable audit entry.
+        </p>
+
+        <div class="form-group">
+          <label for="reversalReason">Reversal Justification / Audit Reason <span style="color: #ef4444;">*</span></label>
+          <textarea name="reason" id="reversalReason" rows="3" class="form-control" 
+                    placeholder="Provide mandatory explanation (e.g. Duplicate slip entered in error, check bounced)" required minlength="5"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-modal-close>Abort</button>
+        <button type="submit" class="btn btn-danger">
+          <i class="fa-solid fa-check"></i> Authorize Reversal
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // Dynamically set form action when reversal button is clicked
+  document.querySelectorAll('[data-modal-target="reversalModal"]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const paymentId = btn.getAttribute('data-payment-id');
+      const form = document.getElementById('reversalForm');
+      if (form && paymentId) {
+        form.action = `/payments/${paymentId}/reverse`;
+      }
+    });
+  });
+</script>
+{% endblock %}

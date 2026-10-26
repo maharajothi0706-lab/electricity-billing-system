@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Record Payment - Power Grid Utility{% endblock %}
+{% block page_title %}Record Consumer Payment{% endblock %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 0 auto;">
+  <div class="card">
+    <div class="card-header">
+      <h3>
+        <i class="fa-solid fa-credit-card" style="color: var(--electric-green);"></i>
+        Payment Collection Counter
+      </h3>
+      <a href="{{ url_for('payments.index') }}" class="btn btn-outline btn-sm">
+        <i class="fa-solid fa-arrow-left"></i> Back to Payments
+      </a>
+    </div>
+
+    <form method="POST" action="{{ url_for('payments.record') }}">
+      <div class="card-body">
+
+        <!-- Select Target Bill -->
+        <div class="form-group">
+          <label for="paymentBillSelect">Select Unsettled Invoice <span style="color: #ef4444;">*</span></label>
+          <select id="paymentBillSelect" name="bill_id" class="form-control" required>
+            <option value="">-- Choose outstanding bill --</option>
+            {% for b in unpaid_bills %}
+            <option value="{{ b.bill_id }}" 
+                    data-outstanding="{{ b.outstanding_amount }}"
+                    {% if (selected_bill and selected_bill.bill_id == b.bill_id) or (preselected_bill_id|string == b.bill_id|string) %}selected{% endif %}>
+              {{ b.bill_number }} - {{ b.full_name }} ({{ b.consumer_number }}) • Due: ₹{{ b.outstanding_amount }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Outstanding Info Banner -->
+        <div style="background-color: #f8fafc; border: 1px dashed var(--border); border-radius: var(--radius-sm); padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">Current Balance Due:</span>
+            <div style="font-size: 11px; color: var(--text-muted);">Total Invoiced minus Previous Successful Payments</div>
+          </div>
+          <div>
+            <span id="displayedOutstanding" style="font-size: 24px; font-weight: 800; color: #ef4444;">
+              {% if selected_bill %}{{ selected_bill.outstanding_amount | currency }}{% else %}₹0.00{% endif %}
+            </span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <!-- Payment Amount -->
+          <div class="form-group">
+            <label for="paymentAmount">Payment Amount (₹) <span style="color: #ef4444;">*</span></label>
+            <input type="number" step="0.01" min="1.00" id="paymentAmount" name="amount" class="form-control" 
+                   value="{% if selected_bill %}{{ selected_bill.outstanding_amount }}{% endif %}" placeholder="0.00" required>
+            <span class="form-hint">Partial payments permitted. Overpayments will be rejected.</span>
+          </div>
+
+          <!-- Payment Method -->
+          <div class="form-group">
+            <label for="payment_method">Payment Settlement Method <span style="color: #ef4444;">*</span></label>
+            <select id="payment_method" name="payment_method" class="form-control" required>
+              <option value="UPI">UPI (Google Pay / PhonePe / QR)</option>
+              <option value="CASH">Counter Cash</option>
+              <option value="BANK_TRANSFER">Bank Transfer (NEFT / RTGS)</option>
+              <option value="NET_BANKING">Internet Banking</option>
+              <option value="DEBIT_CARD">Debit / Credit Card</option>
+              <option value="CHEQUE">Bank Cheque / Demand Draft</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Remarks -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label for="remarks">Payment Notes / Bank Transaction Reference</label>
+          <input type="text" id="remarks" name="remarks" class="form-control" placeholder="e.g. UTR # 4920192841, or Counter Receipt Slip #">
+        </div>
+
+      </div>
+
+      <div class="card-header" style="justify-content: flex-end; gap: 12px; background-color: #f8fafc;">
+        <a href="{{ url_for('payments.index') }}" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-success">
+          <i class="fa-solid fa-check"></i> Post Payment Receipt
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const billSelect = document.getElementById('paymentBillSelect');
+  const amountInput = document.getElementById('paymentAmount');
+  const outDisplay = document.getElementById('displayedOutstanding');
+
+  if (billSelect) {
+    billSelect.addEventListener('change', (e) => {
+      const selected = e.target.options[e.target.selectedIndex];
+      const outstanding = selected.getAttribute('data-outstanding');
+      if (outstanding) {
+        amountInput.value = parseFloat(outstanding).toFixed(2);
+        amountInput.max = outstanding;
+        outDisplay.textContent = `₹${parseFloat(outstanding).toFixed(2)}`;
+      } else {
+        outDisplay.textContent = '₹0.00';
+      }
+    });
+  }
+</script>
+{% endblock %}

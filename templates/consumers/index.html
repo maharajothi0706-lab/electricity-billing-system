@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Consumers Directory - Power Grid Utility{% endblock %}
+{% block page_title %}Electricity Consumer Directory{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+  <div>
+    <h2 style="font-size: 18px; font-weight: 700;">Registered Consumers</h2>
+    <p style="font-size: 13px; color: var(--text-muted);">Manage customer accounts, connection types, and meters</p>
+  </div>
+  <a href="{{ url_for('consumers.add') }}" class="btn btn-primary">
+    <i class="fa-solid fa-user-plus"></i> Add Consumer
+  </a>
+</div>
+
+<!-- Search & Filter Bar -->
+<form method="GET" action="{{ url_for('consumers.index') }}" class="filter-bar">
+  <div class="search-input">
+    <input type="text" name="search" class="form-control" placeholder="Search by consumer name, ID, or meter #..." value="{{ search }}">
+  </div>
+
+  <div>
+    <select name="conn_type" class="form-control" onchange="this.form.submit()">
+      <option value="ALL">All Categories</option>
+      <option value="DOMESTIC" {% if conn_type == 'DOMESTIC' %}selected{% endif %}>Domestic</option>
+      <option value="COMMERCIAL" {% if conn_type == 'COMMERCIAL' %}selected{% endif %}>Commercial</option>
+      <option value="INDUSTRIAL" {% if conn_type == 'INDUSTRIAL' %}selected{% endif %}>Industrial</option>
+    </select>
+  </div>
+
+  <div>
+    <select name="status" class="form-control" onchange="this.form.submit()">
+      <option value="ALL">All Statuses</option>
+      <option value="ACTIVE" {% if status == 'ACTIVE' %}selected{% endif %}>Active</option>
+      <option value="INACTIVE" {% if status == 'INACTIVE' %}selected{% endif %}>Inactive</option>
+    </select>
+  </div>
+
+  <button type="submit" class="btn btn-outline">
+    <i class="fa-solid fa-filter"></i> Apply Filter
+  </button>
+
+  {% if search or (conn_type and conn_type != 'ALL') or (status and status != 'ALL') %}
+  <a href="{{ url_for('consumers.index') }}" class="btn btn-outline" style="color: #ef4444;">
+    <i class="fa-solid fa-xmark"></i> Clear
+  </a>
+  {% endif %}
+</form>
+
+<!-- Consumers Table -->
+<div class="card">
+  <div class="table-responsive">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Consumer #</th>
+          <th>Full Name</th>
+          <th>Category</th>
+          <th>Meter Number</th>
+          <th>Contact</th>
+          <th>City</th>
+          <th>Outstanding</th>
+          <th>Status</th>
+          <th style="text-align: right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in consumers %}
+        <tr>
+          <td>
+            <a href="{{ url_for('consumers.view', consumer_id=c.consumer_id) }}" style="font-weight: 700; color: var(--brand-blue); text-decoration: none;">
+              {{ c.consumer_number }}
+            </a>
+          </td>
+          <td>
+            <strong>{{ c.full_name }}</strong>
+            <div style="font-size: 11px; color: var(--text-muted);">Joined {{ c.connection_date | date_format }}</div>
+          </td>
+          <td>
+            {% if c.connection_type == 'DOMESTIC' %}
+              <span class="badge badge-domestic">Domestic</span>
+            {% elif c.connection_type == 'COMMERCIAL' %}
+              <span class="badge badge-commercial">Commercial</span>
+            {% else %}
+              <span class="badge badge-industrial">Industrial</span>
+            {% endif %}
+          </td>
+          <td><code>{{ c.meter_number }}</code></td>
+          <td>
+            <div>{{ c.phone_number }}</div>
+            <small style="color: var(--text-muted);">{{ c.email }}</small>
+          </td>
+          <td>{{ c.city }}</td>
+          <td>
+            {% if c.total_outstanding > 0 %}
+              <span style="font-weight: 700; color: #ef4444;">{{ c.total_outstanding | currency }}</span>
+            {% else %}
+              <span style="color: #10b981; font-weight: 600;">₹0.00</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if c.account_status == 'ACTIVE' %}
+              <span class="badge badge-active">Active</span>
+            {% else %}
+              <span class="badge badge-inactive">Inactive</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <a href="{{ url_for('consumers.view', consumer_id=c.consumer_id) }}" class="btn btn-outline btn-sm" title="View Profile">
+              <i class="fa-solid fa-eye"></i>
+            </a>
+            <a href="{{ url_for('consumers.edit', consumer_id=c.consumer_id) }}" class="btn btn-outline btn-sm" title="Edit Consumer">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 36px;">
+            <i class="fa-solid fa-users-slash" style="font-size: 32px; color: #cbd5e1; margin-bottom: 8px;"></i>
+            <p>No consumers found matching criteria.</p>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

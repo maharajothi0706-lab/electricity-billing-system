@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}System Settings - Power Grid Utility{% endblock %}
+{% block page_title %}System Settings & Database Configuration{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+
+  <!-- Database Connection Card -->
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-database" style="color: var(--brand-blue);"></i> PostgreSQL Database Parameters</h3>
+      {% if db_connected %}
+      <span class="badge badge-paid">Connected (Port {{ config.DB_PORT }})</span>
+      {% else %}
+      <span class="badge badge-unpaid">Disconnected</span>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; font-size: 13.5px; margin-bottom: 20px;">
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Database Server Host:</span>
+          <strong>{{ config.DB_HOST }}</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Port:</span>
+          <strong>{{ config.DB_PORT }}</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Database Name:</span>
+          <code>{{ config.DB_NAME }}</code>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Database User:</span>
+          <strong>{{ config.DB_USER }}</strong>
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Active Database Engine / Status:</span>
+          <span style="font-family: monospace; font-size: 12px; background: #f8fafc; padding: 6px 10px; border-radius: 4px; display: block; border: 1px solid var(--border);">
+            {{ db_version }}
+          </span>
+        </div>
+      </div>
+
+      <div style="background-color: #f8fafc; padding: 14px; border-radius: var(--radius-sm); border: 1px dashed var(--border); font-size: 12.5px; color: var(--text-muted);">
+        <strong style="color: var(--text-main);">Database Setup & Reset:</strong><br>
+        To re-initialize or seed the PostgreSQL database, execute the initialization command in your terminal:
+        <code style="display: block; margin-top: 6px; padding: 6px; background-color: #0f172a; color: #38bdf8; border-radius: 4px;">
+          python init_db.py
+        </code>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Environment Card -->
+  <div class="card">
+    <div class="card-header">
+      <h3><i class="fa-solid fa-server" style="color: var(--electric-green);"></i> Application Environment</h3>
+    </div>
+    <div class="card-body" style="font-size: 13.5px;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Technology Framework:</span>
+          <strong>Flask 3.x (Python 3.12)</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Driver / Client Library:</span>
+          <strong>psycopg2-binary</strong>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Environment:</span>
+          <span>Development / Debug Mode</span>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">HTTP Port:</span>
+          <span>{{ config.PORT }}</span>
+        </div>
+        <div>
+          <span style="color: var(--text-muted); font-size: 12px; display: block;">Active Session User:</span>
+          <strong>{{ current_user_name }} ({{ current_user_role }})</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

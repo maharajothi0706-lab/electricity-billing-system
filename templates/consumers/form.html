@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}{% if action == 'add' %}Register New Consumer{% else %}Edit Consumer - {{ form.consumer_number }}{% endif %} - Power Grid{% endblock %}
+{% block page_title %}{% if action == 'add' %}Register New Consumer{% else %}Edit Consumer Profile{% endif %}{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+  <div class="card">
+    <div class="card-header">
+      <h3>
+        <i class="fa-solid fa-user-pen" style="color: var(--brand-blue);"></i>
+        {% if action == 'add' %}Consumer Registration Form{% else %}Update Consumer: {{ form.consumer_number }}{% endif %}
+      </h3>
+      <a href="{{ url_for('consumers.index') }}" class="btn btn-outline btn-sm">
+        <i class="fa-solid fa-arrow-left"></i> Back to Directory
+      </a>
+    </div>
+
+    <form method="POST">
+      <div class="card-body">
+        <div class="form-grid">
+          <!-- Consumer Number -->
+          <div class="form-group">
+            <label for="consumer_number">Consumer Number (Unique) <span style="color: #ef4444;">*</span></label>
+            <input type="text" id="consumer_number" name="consumer_number" class="form-control" 
+                   value="{{ form.consumer_number }}" {% if action == 'edit' %}readonly style="background-color: #f8fafc;"{% endif %} required>
+            <span class="form-hint">E.g. CONS-1001, assigned uniquely to the account</span>
+          </div>
+
+          <!-- Physical Meter Number -->
+          <div class="form-group">
+            <label for="meter_number">Meter Hardware Number (Unique) <span style="color: #ef4444;">*</span></label>
+            <input type="text" id="meter_number" name="meter_number" class="form-control" 
+                   value="{{ form.meter_number }}" {% if action == 'edit' %}readonly style="background-color: #f8fafc;"{% endif %} required>
+            <span class="form-hint">Physical meter serial number (e.g. MTR-DOM-5001)</span>
+          </div>
+
+          <!-- Full Name -->
+          <div class="form-group">
+            <label for="full_name">Full Name of Consumer / Business <span style="color: #ef4444;">*</span></label>
+            <input type="text" id="full_name" name="full_name" class="form-control" value="{{ form.full_name }}" required>
+          </div>
+
+          <!-- Connection Type -->
+          <div class="form-group">
+            <label for="connection_type">Connection Tariff Category <span style="color: #ef4444;">*</span></label>
+            <select id="connection_type" name="connection_type" class="form-control" required>
+              <option value="DOMESTIC" {% if form.connection_type == 'DOMESTIC' %}selected{% endif %}>Domestic Residential</option>
+              <option value="COMMERCIAL" {% if form.connection_type == 'COMMERCIAL' %}selected{% endif %}>Commercial Retail / Office</option>
+              <option value="INDUSTRIAL" {% if form.connection_type == 'INDUSTRIAL' %}selected{% endif %}>Industrial High Tension</option>
+            </select>
+          </div>
+
+          <!-- Phone Number -->
+          <div class="form-group">
+            <label for="phone_number">Contact Phone Number <span style="color: #ef4444;">*</span></label>
+            <input type="tel" id="phone_number" name="phone_number" class="form-control" value="{{ form.phone_number }}" required>
+          </div>
+
+          <!-- Email Address -->
+          <div class="form-group">
+            <label for="email">Email Address <span style="color: #ef4444;">*</span></label>
+            <input type="email" id="email" name="email" class="form-control" value="{{ form.email }}" required>
+          </div>
+
+          <!-- City -->
+          <div class="form-group">
+            <label for="city">City / Jurisdiction</label>
+            <input type="text" id="city" name="city" class="form-control" value="{{ form.city }}" required>
+          </div>
+
+          {% if action == 'add' %}
+          <!-- Connection Date -->
+          <div class="form-group">
+            <label for="connection_date">Connection Sanction Date</label>
+            <input type="date" id="connection_date" name="connection_date" class="form-control" value="{{ form.connection_date }}" required>
+          </div>
+          {% else %}
+          <!-- Account Status for edit -->
+          <div class="form-group">
+            <label for="account_status">Account Status</label>
+            <select id="account_status" name="account_status" class="form-control">
+              <option value="ACTIVE" {% if form.account_status == 'ACTIVE' %}selected{% endif %}>ACTIVE</option>
+              <option value="INACTIVE" {% if form.account_status == 'INACTIVE' %}selected{% endif %}>INACTIVE</option>
+            </select>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Full Street Address -->
+        <div class="form-group" style="margin-top: 14px;">
+          <label for="address">Full Service Physical Address <span style="color: #ef4444;">*</span></label>
+          <textarea id="address" name="address" rows="3" class="form-control" required>{{ form.address }}</textarea>
+        </div>
+      </div>
+
+      <div class="card-header" style="justify-content: flex-end; gap: 12px; background-color: #f8fafc;">
+        <a href="{{ url_for('consumers.index') }}" class="btn btn-outline">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i> {% if action == 'add' %}Save Consumer Account{% else %}Update Details{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
